@@ -17,11 +17,12 @@ def do_configure(args):
     sycl_dir = os.path.join(abs_src_dir, "sycl")
     spirv_dir = os.path.join(abs_src_dir, "llvm-spirv")
     xpti_dir = os.path.join(abs_src_dir, "xpti")
+    ittapi_dir = os.path.join(abs_src_dir, "ittapi")
     libdevice_dir = os.path.join(abs_src_dir, "libdevice")
     ocl_header_dir = os.path.join(abs_obj_dir, "OpenCL-Headers")
     icd_loader_lib = os.path.join(abs_obj_dir, "OpenCL-ICD-Loader", "build")
     llvm_targets_to_build = 'X86'
-    llvm_enable_projects = 'clang;llvm-spirv;sycl;opencl-aot;xpti;libdevice'
+    llvm_enable_projects = 'clang;llvm-spirv;sycl;opencl-aot;xpti;ittapi;libdevice'
     libclc_targets_to_build = ''
     sycl_build_pi_cuda = 'OFF'
     sycl_werror = 'ON'
@@ -63,10 +64,11 @@ def do_configure(args):
         "-DCMAKE_BUILD_TYPE={}".format(args.build_type),
         "-DLLVM_ENABLE_ASSERTIONS={}".format(llvm_enable_assertions),
         "-DLLVM_TARGETS_TO_BUILD={}".format(llvm_targets_to_build),
-        "-DLLVM_EXTERNAL_PROJECTS=sycl;llvm-spirv;opencl-aot;xpti;libdevice",
+        "-DLLVM_EXTERNAL_PROJECTS=sycl;llvm-spirv;opencl-aot;xpti;ittapi;libdevice",
         "-DLLVM_EXTERNAL_SYCL_SOURCE_DIR={}".format(sycl_dir),
         "-DLLVM_EXTERNAL_LLVM_SPIRV_SOURCE_DIR={}".format(spirv_dir),
         "-DLLVM_EXTERNAL_XPTI_SOURCE_DIR={}".format(xpti_dir),
+        "-DLLVM_EXTERNAL_ITTAPI_SOURCE_DIR={}".format(ittapi_dir),
         "-DLLVM_EXTERNAL_LIBDEVICE_SOURCE_DIR={}".format(libdevice_dir),
         "-DLLVM_ENABLE_PROJECTS={}".format(llvm_enable_projects),
         "-DLIBCLC_TARGETS_TO_BUILD={}".format(libclc_targets_to_build),
@@ -78,7 +80,8 @@ def do_configure(args):
         "-DLLVM_ENABLE_DOXYGEN={}".format(llvm_enable_doxygen),
         "-DLLVM_ENABLE_SPHINX={}".format(llvm_enable_sphinx),
         "-DBUILD_SHARED_LIBS={}".format(llvm_build_shared_libs),
-        "-DSYCL_ENABLE_XPTI_TRACING=ON" # Explicitly turn on XPTI tracing
+        "-DSYCL_ENABLE_XPTI_TRACING=ON", # Explicitly turn on XPTI tracing
+        "-DSYCL_ENABLE_ITTAPI=ON" # Explicitly turn on ittapi
     ]
 
     if args.system_ocl:

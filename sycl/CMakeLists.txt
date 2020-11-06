@@ -43,6 +43,10 @@ endif()
 # of the SYCL runtime and expect enabling
 option(SYCL_ENABLE_XPTI_TRACING "Enable tracing of SYCL constructs" OFF)
 
+# Create a soft option for enabling or disabling the annotation
+# of the SYCL runtime and expect enabling
+option(SYCL_ENABLE_ITTAPI "Enable annotation of SYCL constructs" OFF)
+
 if(MSVC)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
   # Skip asynchronous C++ exceptions catching and assume "extern C" functions
@@ -306,6 +310,11 @@ if (SYCL_ENABLE_XPTI_TRACING)
     add_dependencies( sycl-toolchain xptid)
   endif()
 endif()
+
+if (SYCL_ENABLE_ITTAPI)
+  add_dependencies( sycl-toolchain ittnotify)
+endif()
+
 
 option(SYCL_INCLUDE_TESTS
   "Generate build targets for the SYCL unit tests."

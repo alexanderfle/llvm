@@ -13,6 +13,15 @@
 #include <atomic>
 #include <thread>
 
+#if ITT_NOTIFY_ENABLE
+#include <ittnotify.h>
+#define ITT_SYNC_ACQUIRED(addr) __itt_sync_acquired((void *)addr)
+#define ITT_SYNC_RELEASING(addr) __itt_sync_releasing((void *)addr)
+#else
+#define ITT_SYNC_ACQUIRED(...)
+#define ITT_SYNC_RELEASING(...)
+#endif
+
 __SYCL_INLINE_NAMESPACE(cl) {
 namespace sycl {
 namespace detail {
@@ -29,8 +38,12 @@ public:
   void lock() {
     while (MLock.test_and_set(std::memory_order_acquire))
       std::this_thread::yield();
+    ITT_SYNC_ACQUIRED(this);
   }
-  void unlock() { MLock.clear(std::memory_order_release); }
+  void unlock() {
+    ITT_SYNC_RELEASING(this);
+    MLock.clear(std::memory_order_release);
+  }
 
 private:
   std::atomic_flag MLock = ATOMIC_FLAG_INIT;
