@@ -13,13 +13,14 @@ def do_configure(args):
     if not os.path.isdir(abs_obj_dir):
       os.makedirs(abs_obj_dir)
 
-    llvm_external_projects = 'sycl;llvm-spirv;opencl-aot;libdevice;xpti;xptifw'
+    llvm_external_projects = 'sycl;llvm-spirv;opencl-aot;libdevice;xpti;xptifw;ittapi'
 
     llvm_dir = os.path.join(abs_src_dir, "llvm")
     sycl_dir = os.path.join(abs_src_dir, "sycl")
     spirv_dir = os.path.join(abs_src_dir, "llvm-spirv")
     xpti_dir = os.path.join(abs_src_dir, "xpti")
     xptifw_dir = os.path.join(abs_src_dir, "xptifw")
+    ittapi_dir = os.path.join(abs_src_dir, "ittapi")
     libdevice_dir = os.path.join(abs_src_dir, "libdevice")
     ocl_header_dir = os.path.join(abs_obj_dir, "OpenCL-Headers")
     icd_loader_lib = os.path.join(abs_obj_dir, "OpenCL-ICD-Loader", "build")
@@ -34,6 +35,7 @@ def do_configure(args):
     llvm_build_shared_libs = 'OFF'
 
     sycl_enable_xpti_tracing = 'ON'
+    sycl_enable_ittapi = 'ON'
     icd_loader_lib = os.path.join(icd_loader_lib, "libOpenCL.so" if platform.system() == 'Linux' else "OpenCL.lib")
 
     # replace not append, so ARM ^ X86
@@ -71,6 +73,7 @@ def do_configure(args):
         "-DLLVM_EXTERNAL_SYCL_SOURCE_DIR={}".format(sycl_dir),
         "-DLLVM_EXTERNAL_LLVM_SPIRV_SOURCE_DIR={}".format(spirv_dir),
         "-DLLVM_EXTERNAL_XPTI_SOURCE_DIR={}".format(xpti_dir),
+        "-DLLVM_EXTERNAL_ITTAPI_SOURCE_DIR={}".format(ittapi_dir),
         "-DXPTI_SOURCE_DIR={}".format(xpti_dir),
         "-DLLVM_EXTERNAL_XPTIFW_SOURCE_DIR={}".format(xptifw_dir),
         "-DLLVM_EXTERNAL_LIBDEVICE_SOURCE_DIR={}".format(libdevice_dir),
@@ -84,7 +87,8 @@ def do_configure(args):
         "-DLLVM_ENABLE_DOXYGEN={}".format(llvm_enable_doxygen),
         "-DLLVM_ENABLE_SPHINX={}".format(llvm_enable_sphinx),
         "-DBUILD_SHARED_LIBS={}".format(llvm_build_shared_libs),
-        "-DSYCL_ENABLE_XPTI_TRACING={}".format(sycl_enable_xpti_tracing)
+        "-DSYCL_ENABLE_XPTI_TRACING={}".format(sycl_enable_xpti_tracing),
+        "-DSYCL_ENABLE_ITTAPI={}".format(sycl_enable_ittapi)
     ]
 
     if args.system_ocl:

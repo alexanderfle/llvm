@@ -16,6 +16,13 @@ if (SYCL_ENABLE_XPTI_TRACING)
   include_directories(${LLVM_EXTERNAL_XPTI_SOURCE_DIR}/include)
 endif()
 
+if (SYCL_ENABLE_ITTAPI)
+  if (NOT EXISTS ${LLVM_EXTERNAL_ITTAPI_SOURCE_DIR})
+    message (FATAL_ERROR "Undefined LLVM_EXTERNAL_ITTAPI_SOURCE_DIR variable: Must be set when ittapi is set to ON")
+  endif()
+  include_directories(${LLVM_EXTERNAL_ITTAPI_SOURCE_DIR}/include)
+endif()
+
 function(add_sycl_rt_library LIB_NAME)
   # Add an optional argument so we can get the library name to
   # link with for Windows Debug version
@@ -98,6 +105,12 @@ function(add_sycl_rt_library LIB_NAME)
     target_compile_options(${LIB_OBJ_NAME} PRIVATE
       -Winstantiation-after-specialization)
   endif()
+
+  if (SYCL_ENABLE_ITTAPI)
+    target_compile_definitions(${LIB_OBJ_NAME} PRIVATE ITT_NOTIFY_ENABLE)
+    target_link_libraries(${LIB_NAME} PRIVATE ittnotify)
+  endif()
+
 endfunction(add_sycl_rt_library)
 
 set(SYCL_SOURCES

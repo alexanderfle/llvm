@@ -46,6 +46,17 @@
 #include "xpti_trace_framework.hpp"
 #endif
 
+#ifdef ITT_NOTIFY_ENABLE
+#include <ittnotify.h>
+#define ITT_SYNC_ACQUIRED(addr) __itt_sync_acquired((void *)addr)
+#define ITT_SYNC_RELEASING(addr) __itt_sync_releasing((void *)addr)
+#define ITT_SYNC_DESTROY(addr) __itt_sync_destroy((void *)addr)
+#else
+#define ITT_SYNC_ACQUIRED(...)
+#define ITT_SYNC_RELEASING(...)
+#define ITT_SYNC_DESTROY(...)
+#endif
+
 __SYCL_INLINE_NAMESPACE(cl) {
 namespace sycl {
 namespace detail {
@@ -966,6 +977,7 @@ cl_int ReleaseCommand::enqueueImp() {
                            MAllocaCmd->getSYCLMemObj(),
                            MAllocaCmd->getMemAllocation(),
                            std::move(EventImpls), Event);
+    ITT_SYNC_DESTROY(MAllocaCmd);
   }
   return CL_SUCCESS;
 }
@@ -1216,7 +1228,9 @@ cl_int UpdateHostRequirementCommand::enqueueImp() {
   assert(MSrcAllocaCmd && "Expected valid alloca command");
   assert(MSrcAllocaCmd->getMemAllocation() && "Expected valid source pointer");
   assert(MDstPtr && "Expected valid target pointer");
+  ITT_SYNC_ACQUIRED(MSrcAllocaCmd);
   *MDstPtr = MSrcAllocaCmd->getMemAllocation();
+  ITT_SYNC_RELEASING(MSrcAllocaCmd);
 
   return CL_SUCCESS;
 }
