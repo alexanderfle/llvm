@@ -34,6 +34,7 @@ def do_configure(args):
     llvm_build_shared_libs = 'OFF'
 
     sycl_enable_xpti_tracing = 'ON'
+    sycl_enable_ittapi = 'ON'
     icd_loader_lib = os.path.join(icd_loader_lib, "libOpenCL.so" if platform.system() == 'Linux' else "OpenCL.lib")
 
     # replace not append, so ARM ^ X86
@@ -84,7 +85,8 @@ def do_configure(args):
         "-DLLVM_ENABLE_DOXYGEN={}".format(llvm_enable_doxygen),
         "-DLLVM_ENABLE_SPHINX={}".format(llvm_enable_sphinx),
         "-DBUILD_SHARED_LIBS={}".format(llvm_build_shared_libs),
-        "-DSYCL_ENABLE_XPTI_TRACING={}".format(sycl_enable_xpti_tracing)
+        "-DSYCL_ENABLE_XPTI_TRACING={}".format(sycl_enable_xpti_tracing),
+        "-DSYCL_ENABLE_ITTAPI={}".format(sycl_enable_ittapi)
     ]
 
     if args.system_ocl:

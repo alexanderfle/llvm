@@ -22,6 +22,17 @@
 #include <thread>
 #include <vector>
 
+#ifdef ITT_NOTIFY_ENABLE
+#include <ittnotify.h>
+#define ITT_SYNC_ACQUIRED(addr) __itt_sync_acquired((void *)addr)
+#define ITT_SYNC_RELEASING(addr) __itt_sync_releasing((void *)addr)
+#define ITT_SYNC_DESTROY(addr) __itt_sync_destroy((void *)addr)
+#else
+#define ITT_SYNC_ACQUIRED(...)
+#define ITT_SYNC_RELEASING(...)
+#define ITT_SYNC_DESTROY(...)
+#endif
+
 __SYCL_INLINE_NAMESPACE(cl) {
 namespace sycl {
 namespace detail {
@@ -254,6 +265,8 @@ EventImplPtr Scheduler::addHostAccessor(Requirement *Req) {
   bool Enqueued = GraphProcessor::enqueueCommand(NewCmd, Res);
   if (!Enqueued && EnqueueResultT::SyclEnqueueFailed == Res.MResult)
     throw runtime_error("Enqueue process failed.", PI_INVALID_OPERATION);
+
+  ITT_SYNC_ACQUIRED(Req->MBlockedCmd->MDeps.front().MAllocaCmd);
   return NewCmd->getEvent();
 }
 
@@ -264,6 +277,7 @@ void Scheduler::releaseHostAccessor(Requirement *Req) {
 
   assert(BlockedCmd && "Can't find appropriate command to unblock");
 
+  ITT_SYNC_RELEASING(BlockedCmd->MDeps.front().MAllocaCmd);
   BlockedCmd->MEnqueueStatus = EnqueueResultT::SyclEnqueueReady;
 
   enqueueLeavesOfReqUnlocked(Req);

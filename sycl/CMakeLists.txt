@@ -43,6 +43,10 @@ endif()
 # of the SYCL runtime and expect enabling
 option(SYCL_ENABLE_XPTI_TRACING "Enable tracing of SYCL constructs" OFF)
 
+# Create a soft option for enabling or disabling the annotation
+# of the SYCL runtime and expect enabling
+option(SYCL_ENABLE_ITTAPI "Enable annotation of SYCL constructs" OFF)
+
 if(MSVC)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
   # Skip asynchronous C++ exceptions catching and assume "extern C" functions
@@ -196,6 +200,43 @@ install(DIRECTORY ${OPENCL_INCLUDE}/CL
   COMPONENT opencl-headers
 )
 
+if( SYCL_ENABLE_ITTAPI AND NOT ITTAPI_LIBRARY )
+  message(STATUS "ITTAPI_LIBRARY is missing. Will try to download ittapi from github.com")
+
+  set(ITTAPI_LIBRARY_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}ittnotify${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(ITTAPI_LIBRARY "${LLVM_LIBRARY_OUTPUT_INTDIR}/${ITTAPI_LIBRARY_NAME}")
+
+  if (NOT DEFINED SYCL_EP_ITTAPI_SKIP_AUTO_UPDATE)
+    set(SYCL_EP_ITTAPI_SKIP_AUTO_UPDATE ${SYCL_EXTERNAL_PROJECTS_SKIP_AUTO_UPDATE})
+  endif()
+  set(LLVM_EXTERNAL_ITTAPI_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ittapi")
+  set(LLVM_EXTERNAL_ITTAPI_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/ittapi_build")
+  ExternalProject_Add(ittapi
+    GIT_REPOSITORY    https://github.com/intel/ittapi.git
+    GIT_TAG           master
+    UPDATE_DISCONNECTED ${SYCL_EP_ITTAPI_SKIP_AUTO_UPDATE}
+    SOURCE_DIR        ${LLVM_EXTERNAL_ITTAPI_SOURCE_DIR}
+    BINARY_DIR        ${LLVM_EXTERNAL_ITTAPI_BUILD_DIR}
+    INSTALL_COMMAND   ${CMAKE_COMMAND} -E copy
+                            "${LLVM_EXTERNAL_ITTAPI_BUILD_DIR}/bin/${ITTAPI_LIBRARY_NAME}"
+                            ${LLVM_LIBRARY_OUTPUT_INTDIR}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+               -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+               ${AUX_CMAKE_FLAGS}
+               LOG_DOWNLOAD 1
+               LOG_UPDATE 1
+               LOG_CONFIGURE 1
+               LOG_BUILD 1
+               LOG_INSTALL 1
+    STEP_TARGETS      configure, build, install
+    BUILD_BYPRODUCTS ${ITTAPI_LIBRARY}
+  )
+
+  add_library(ittnotify STATIC IMPORTED)
+  SET_TARGET_PROPERTIES(ittnotify PROPERTIES IMPORTED_LOCATION ${ITTAPI_LIBRARY})
+  add_dependencies(ittnotify ittapi)
+endif()
+
 option(SYCL_BUILD_PI_CUDA
   "Enables the CUDA backend for the Plugin Interface" OFF)
 
@@ -279,6 +320,10 @@ if (SYCL_ENABLE_XPTI_TRACING)
   set(XPTIFW_LIBS xptifw)
 endif()
 
+if (SYCL_ENABLE_ITTAPI)
+  set(ATTAPI_LIB ittnotify)
+endif()
+
 # SYCL toolchain builds all components: compiler, libraries, headers, etc.
 add_custom_target( sycl-toolchain
   DEPENDS ${SYCL_RT_LIBS}
@@ -297,6 +342,7 @@ add_custom_target( sycl-toolchain
           sycl-post-link
           sycl-ls
           ${XPTIFW_LIBS}
+          ${ATTAPI_LIB}
   COMMENT "Building SYCL compiler toolchain..."
 )
 
@@ -359,6 +405,7 @@ set( SYCL_TOOLCHAIN_DEPLOY_COMPONENTS
      pi_level_zero
      libsycldevice
      ${XPTIFW_LIBS}
+     ${ATTAPI_LIB}
 )
 
 if(OpenCL_INSTALL_KHRONOS_ICD_LOADER AND TARGET ocl-icd)
