@@ -133,7 +133,7 @@ Advice2:
 if there is a data race between kernels, then developer needs to use inorder queue to ensure correctness results, see the example below. Independent kernels that don't have data races can run using an out-of-order queue.
 
 ==  Observed performance gain
-In the table observed performance gain of one submittion using the API compared to standard API.
+In the table observed performance gain of one submission using the API compared to standard API.
 
 [%header,cols="1,5"]
 |===
