@@ -53,6 +53,7 @@ prepareUSMEvent(const std::shared_ptr<detail::queue_impl> &QueueImpl,
 event queue_impl::memset(const std::shared_ptr<detail::queue_impl> &Self,
                          void *Ptr, int Value, size_t Count,
                          const std::vector<event> &DepEvents) {
+  implicitly_do_submit();
   RT::PiEvent NativeEvent{};
   MemoryManager::fill_usm(Ptr, Self, Count, Value,
                           getOrWaitEvents(DepEvents, MContext), NativeEvent);
@@ -72,6 +73,7 @@ event queue_impl::memset(const std::shared_ptr<detail::queue_impl> &Self,
 event queue_impl::memcpy(const std::shared_ptr<detail::queue_impl> &Self,
                          void *Dest, const void *Src, size_t Count,
                          const std::vector<event> &DepEvents) {
+  implicitly_do_submit();
   RT::PiEvent NativeEvent{};
   MemoryManager::copy_usm(Src, Self, Count, Dest,
                           getOrWaitEvents(DepEvents, MContext), NativeEvent);
@@ -92,6 +94,7 @@ event queue_impl::mem_advise(const std::shared_ptr<detail::queue_impl> &Self,
                              const void *Ptr, size_t Length,
                              pi_mem_advice Advice,
                              const vector_class<event> &DepEvents) {
+  implicitly_do_submit();
   RT::PiEvent NativeEvent{};
   MemoryManager::advise_usm(Ptr, Self, Length, Advice,
                             getOrWaitEvents(DepEvents, MContext), NativeEvent);
@@ -108,7 +111,7 @@ event queue_impl::mem_advise(const std::shared_ptr<detail::queue_impl> &Self,
   return ResEvent;
 }
 
-void queue_impl::addEvent(const event &Event) {
+void queue_impl::addEvent(const event &Event, bool toAddFake) {
   EventImplPtr Eimpl = getSyclObjImpl(Event);
   Command *Cmd = (Command *)(Eimpl->getCommand());
   if (!Cmd) {
@@ -118,7 +121,7 @@ void queue_impl::addEvent(const event &Event) {
     // FIXME these events are stored for level zero until as a workaround,
     // remove once piEventRelease no longer calls wait on the event in the
     // plugin.
-    if (is_host() || !MSupportOOO ||
+    if (toAddFake || is_host() || !MSupportOOO ||
         getPlugin().getBackend() == backend::level_zero)
       addSharedEvent(Event);
   } else {
@@ -134,8 +137,8 @@ void queue_impl::addEvent(const event &Event) {
 void queue_impl::addSharedEvent(const event &Event) {
   // FIXME The assertion should be corrected once the Level Zero workaround is
   // removed.
-  assert(is_host() || !MSupportOOO ||
-         getPlugin().getBackend() == backend::level_zero);
+  /// assert(is_host() || !MSupportOOO ||
+  ///        getPlugin().getBackend() == backend::level_zero);
   std::lock_guard<std::mutex> Lock(MMutex);
   // Events stored in MEventsShared are not released anywhere else aside from
   // calls to queue::wait/wait_and_throw, which a user application might not
@@ -255,6 +258,8 @@ void queue_impl::wait(const detail::code_location &CodeLoc) {
   int32_t StreamID = xptiRegisterStream(SYCL_STREAM_NAME);
   TelemetryEvent = instrumentationProlog(CodeLoc, Name, StreamID, IId);
 #endif
+
+  implicitly_do_submit();
 
   std::vector<std::weak_ptr<event_impl>> WeakEvents;
   std::vector<event> SharedEvents;

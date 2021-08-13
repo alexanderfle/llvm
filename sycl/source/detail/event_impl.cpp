@@ -194,6 +194,23 @@ void event_impl::wait(
   TelemetryEvent = instrumentationProlog(Name, StreamID, IId);
 #endif
 
+  // Note: event event; event = q.submit(); - it works!
+  // The following code - it is attempt to create workground for cases: event
+  // event = q.submit(); and auto event = q.submit(); - they don't work as
+  // expected! The original problem is that the default constructor is being
+  // called (BTW, WHY? Why not copy constructor, what is the compiler
+  // optimization?) Here we try to run SubmitFunctor(submit body) -  it works,
+  // but the second wait (event_impl) goes to infinite recursion, but how is it
+  // possible if we only set the SubmitFunctor inside queue_impl::submit_impl?
+  // due to the above questions, it still doesn't work as expected.
+  EventImplPtr EventImpl;
+  if (MDoSubmitFunctor) {
+    MAlreadySubmitted = true;
+    EventImpl = MDoSubmitFunctor(true);
+    // wait(EventImpl);
+    // return;
+  }
+
   if (MEvent)
     // presence of MEvent means the command has been enqueued, so no need to
     // go via the slow path event waiting in the scheduler
@@ -201,6 +218,13 @@ void event_impl::wait(
   else if (MCommand)
     detail::Scheduler::getInstance().waitForEvent(Self);
   cleanupCommand(std::move(Self));
+
+  /*
+    // why is there infinite recursion? it is assumed that in a new wait() call,
+    the MDoSubmitFunctor should be equal to zero! if (EventImpl) {
+      wait(EventImpl);
+    }
+  */
 
 #ifdef XPTI_ENABLE_INSTRUMENTATION
   instrumentationEpilog(TelemetryEvent, Name, StreamID, IId);

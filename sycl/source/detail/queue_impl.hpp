@@ -119,6 +119,8 @@ public:
   }
 
   ~queue_impl() {
+    implicitly_do_submit();
+
     throw_asynchronous();
     if (!MHostQueue) {
       getPlugin().call<PiApiKind::piQueueRelease>(MQueues[0]);
@@ -152,6 +154,10 @@ public:
 
   /// \return true if this queue is a SYCL host queue.
   bool is_host() const { return MHostQueue; }
+
+  bool is_event_required() const {
+    return MIsEventRequired || MisSubmittedExplicitly;
+  }
 
   /// Queries SYCL queue for information.
   ///
@@ -243,6 +249,7 @@ public:
   /// \param Order specifies whether the queue being constructed as in-order
   /// or out-of-order.
   RT::PiQueue createQueue(QueueOrder Order) {
+    bool enable_profiling = false;
     RT::PiQueueProperties CreationFlags = 0;
 
     if (Order == QueueOrder::OOO) {
@@ -250,6 +257,7 @@ public:
     }
     if (MPropList.has_property<property::queue::enable_profiling>()) {
       CreationFlags |= PI_QUEUE_PROFILING_ENABLE;
+      enable_profiling = true;
     }
     if (MPropList.has_property<property::queue::cuda::use_default_stream>()) {
       CreationFlags |= __SYCL_PI_CUDA_USE_DEFAULT_STREAM;
@@ -273,6 +281,7 @@ public:
       Plugin.checkPiResult(Error);
     }
 
+    MIsEventRequired = enable_profiling || (!MSupportOOO);
     return Queue;
   }
 
@@ -394,6 +403,29 @@ public:
   pi_native_handle getNative() const;
 
 private:
+  /// Stores an event that should be associated with the queue
+  ///
+  /// \param Event is the event to be stored
+  void addEvent(const event &Event, bool toAddFake = false);
+
+  void setSubmittedExplicitly(bool isSubmittedExplicitly) {
+    MisSubmittedExplicitly = isSubmittedExplicitly;
+  }
+
+  void implicitly_do_submit() {
+    std::vector<event> tmpEventImpls;
+    {
+      std::lock_guard<mutex_class> Lock(MMutex);
+      tmpEventImpls.swap(MEventsShared);
+      // MEventsShared.size(MEventsShared.size());
+    }
+
+    for (event &Event : tmpEventImpls) {
+      detail::EventImplPtr EventImpl = detail::getSyclObjImpl(Event);
+      EventImpl->doIfNotFinalized();
+    }
+  }
+
   /// Performs command group submission to the queue.
   ///
   /// \param CGF is a function object containing command group.
@@ -403,12 +435,36 @@ private:
   event submit_impl(const std::function<void(handler &)> &CGF,
                     const std::shared_ptr<queue_impl> &Self,
                     const detail::code_location &Loc) {
-    handler Handler(Self, MHostQueue);
-    Handler.saveCodeLoc(Loc);
-    CGF(Handler);
-    event Event = Handler.finalize();
-    addEvent(Event);
-    return Event;
+    /*
+        handler Handler(Self, MHostQueue);
+        Handler.saveCodeLoc(Loc);
+        CGF(Handler);
+        event Event = Handler.finalize();
+        addEvent(Event);
+        return Event;
+    */
+
+    auto MUploadDataFunctor = [this, &Self, &Loc,
+                               CGF](bool SubmittedExplicitly) {
+      Self->setSubmittedExplicitly(SubmittedExplicitly);
+      handler Handler(Self, MHostQueue);
+      Handler.saveCodeLoc(Loc);
+      CGF(Handler);
+      event Event = Handler.finalize();
+      addEvent(Event);
+      EventImplPtr EventImpl = detail::getSyclObjImpl(Event);
+      return EventImpl;
+    };
+
+    // It is important that setSubmitFunctor() must go after addEvent(),
+    // otherwise, due to the call to the copy constructor of Event by
+    // MEventsShared.push_back(Event), the behavior will change, since submit
+    // will be executed immediately (not deferred).
+    event EventFake;
+    EventImplPtr EventImplFake = detail::getSyclObjImpl(EventFake);
+    addEvent(EventFake, true);
+    EventImplFake->setSubmitFunctor(MUploadDataFunctor);
+    return EventFake;
   }
 
   // When instrumentation is enabled emits trace event for wait begin and
@@ -429,10 +485,6 @@ private:
   /// \param Event is the event to be stored
   void addSharedEvent(const event &Event);
 
-  /// Stores an event that should be associated with the queue
-  ///
-  /// \param Event is the event to be stored
-  void addEvent(const event &Event);
 
   /// Protects all the fields that can be changed by class' methods.
   std::mutex MMutex;
@@ -460,6 +512,8 @@ private:
   // Assume OOO support by default.
   bool MSupportOOO = true;
 
+  bool MIsEventRequired = false;
+  bool MisSubmittedExplicitly = true;
   // Thread pool for host task and event callbacks execution.
   // The thread pool is instantiated upon the very first call to getThreadPool()
   std::unique_ptr<ThreadPool> MHostTaskThreadPool;

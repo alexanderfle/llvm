@@ -28,6 +28,81 @@ event::event(cl_event ClEvent, const context &SyclContext)
     : impl(std::make_shared<detail::event_impl>(
           detail::pi::cast<RT::PiEvent>(ClEvent), SyclContext)) {}
 
+event::event(const event &rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = rhs.impl;
+  }
+}
+
+event::event(event &&rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = std::move(rhs.impl);
+  }
+}
+
+event &event::operator=(const event &rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = rhs.impl;
+  }
+};
+
+event &event::operator=(event &&rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = std::move(rhs.impl);
+  }
+};
+
+/*
+event::event(event &rhs){
+    auto EventImpl = rhs.impl->doFinalize();
+    if (EventImpl) {
+      impl = EventImpl;
+    } else {
+      impl = rhs.impl;
+    }
+  }
+
+event::event(const event &&rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = std::move(rhs.impl);
+  }
+}
+
+
+event &event::operator=(event &rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+     impl = EventImpl;
+  } else {
+    impl = rhs.impl;
+  }
+};
+
+event &event::operator=(const event &&rhs) {
+  auto EventImpl = rhs.impl->doFinalize();
+  if (EventImpl) {
+     impl = EventImpl;
+  } else {
+    impl = std::move(rhs.impl);
+  }
+};
+*/
+
 bool event::operator==(const event &rhs) const { return rhs.impl == impl; }
 
 bool event::operator!=(const event &rhs) const { return !(*this == rhs); }
@@ -63,6 +138,14 @@ std::vector<event> event::get_wait_list() {
 
 event::event(std::shared_ptr<detail::event_impl> event_impl)
     : impl(event_impl) {}
+/*{
+  auto EventImpl = event_impl->doFinalize();
+  if (EventImpl) {
+    impl = EventImpl;
+  } else {
+    impl = event_impl;
+  }
+}*/
 
 #define __SYCL_PARAM_TRAITS_SPEC(param_type, param, ret_type)                  \
   template <>                                                                  \
