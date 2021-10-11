@@ -51,7 +51,7 @@ products.
 
 == Introduction
 
-This extension adds the template parameter into old API calls `parallel_for` for `sycl::queue` to change the returned value and internal behavior:
+This extension adds the template parameter into standard API calls `parallel_for` for `sycl::queue` to change the returned value and internal behavior:
 [source,c++]
 ----
   template <typename KernelName, typename ret_val = event, typename KernelType>
@@ -107,11 +107,8 @@ For using the new API, the following cases are not supported:
 
 - enable_profiling property for queue
 
-- queue must support OOO if app creates OOO queue
-
-Please note these restrictions(`accessors`, `streams`, `interoperability`, `specialization constants`) are also not available for the old API since they use the handler class or the kernel class, which is not when you use the `sycl::queue::parallel_for`. They can be used in `sycl::queue::submit`, but not `sycl::queue::parallel_for`, so these restrictions are inherited from the old API. It means all these restrictions do not require additional checks and cannot lead to UB as a result of the restriction of the API itself.
+Please note these restrictions(`accessors`, `streams`, `interoperability`, `specialization constants`) are also not available for the standard API since they use the handler class or the kernel class, which is not when you use the `sycl::queue::parallel_for`. They can be used in `sycl::queue::submit`, but not `sycl::queue::parallel_for`, so these restrictions are inherited from the standard API. It means all these restrictions do not require additional checks and cannot lead to UB as a result of the restriction of the API itself.
 `enable_profiling property for queue` restriction is added due to the fact that we don't create event and don't return the `sycl::event` - it is easy to check and an exception will be thrown.
-The last restriction(`queue must support OOO if app creates OOO queue`) is related to internal implementation and can be checked as well and an exception will be thrown.
 
 #### back-end limitations
 [%header,cols="1,5"]
@@ -207,7 +204,7 @@ None.
 |========================================
 |Rev|Date|Author|Changes
 |1|2021-08-05|Alexander Flegontov |*Initial public working draft*
-|2|2021-08-13|Alexander Flegontov |*info about restrictions and implementation via an additional template parameter in the old API*
+|2|2021-08-13|Alexander Flegontov |*info about restrictions and implementation via an additional template parameter in the standard API*
 |========================================
 
 //************************************************************************
