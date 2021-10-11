@@ -1,4 +1,4 @@
-= parallel_for which will not return the event
+= parallel_for which does not return the event
 
 :source-highlighter: coderay
 :coderay-linenums-mode: table
