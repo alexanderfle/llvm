@@ -144,7 +144,7 @@ In the table observed performance gain of one submission using the API compared 
 Table notes:
 * the results were obtained by submission of small kernels with no more than five arguments passed to the kernel
 * improvements may differ from device to device.
-* temporary workground was prepared to measure the performance for level-zero.
+* temporary workaround was prepared to measure the performance for level-zero.
 ----
 
 Following is an example use-case:
