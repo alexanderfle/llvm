@@ -161,7 +161,19 @@ event handler::finalize() {
 
     std::vector<RT::PiEvent> RawEvents;
 
-    if (MQueue->is_event_required()) {
+    if (MQueue->avoid_event_creation()) {
+      auto Res = enqueueImpKernel(MQueue, MNDRDesc, MArgs, MHostKernel,
+                                  KernelBundleImpPtr, MKernel, MKernelName,
+                                  MOSModuleHandle, RawEvents, nullptr, nullptr,
+                                  RunKernelOnHost);
+
+      if (CL_SUCCESS != Res)
+        throw runtime_error("Enqueue process failed.", PI_INVALID_OPERATION);
+
+      for (auto StreamImplPtr : MStreamStorage) {
+        StreamImplPtr->flush();
+      }
+    } else {
       detail::EventImplPtr NewEvent =
           std::make_shared<detail::event_impl>(MQueue);
       NewEvent->setContextImpl(MQueue->getContextImplPtr());
@@ -181,18 +193,6 @@ event handler::finalize() {
       }
 
       MLastEvent = detail::createSyclObjFromImpl<event>(NewEvent);
-    } else {
-      auto Res = enqueueImpKernel(MQueue, MNDRDesc, MArgs, MHostKernel,
-                                  KernelBundleImpPtr, MKernel, MKernelName,
-                                  MOSModuleHandle, RawEvents, nullptr, nullptr,
-                                  RunKernelOnHost);
-
-      if (CL_SUCCESS != Res)
-        throw runtime_error("Enqueue process failed.", PI_INVALID_OPERATION);
-
-      for (auto StreamImplPtr : MStreamStorage) {
-        StreamImplPtr->flush();
-      }
     }
     return MLastEvent;
   }
